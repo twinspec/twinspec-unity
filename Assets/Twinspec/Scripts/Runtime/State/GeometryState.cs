@@ -3,6 +3,7 @@ using System;
 
 namespace Twinspec.State
 {
+
     [Serializable]
     public sealed class GeometryState
     {
