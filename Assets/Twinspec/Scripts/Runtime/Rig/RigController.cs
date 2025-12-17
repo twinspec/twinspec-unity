@@ -1,7 +1,6 @@
 // Assets/Twinspec/Scripts/Runtime/Rig/RigController.cs
 using UnityEngine;
 using Twinspec.State;
-using Twinspec.Viz;
 
 namespace Twinspec.Rig
 {
