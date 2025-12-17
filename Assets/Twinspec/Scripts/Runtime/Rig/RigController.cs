@@ -28,28 +28,63 @@ namespace Twinspec.Rig
 
         public GeometryState Current { get; private set; } = new GeometryState();
 
+        // Sanity kick so you SEE motion immediately during hackathon wiring.
+        // Remove later once UI / events drive state.
+        private void Update()
+        {
+            if (refs == null) return;
+
+            var g = Current ?? new GeometryState();
+
+            g.alpha_i_deg = 0.12f;
+            g.phi_deg = Mathf.PingPong(Time.time * 45f, 90f) - 45f; // oscillate -45..+45
+            g.detector_distance_preset = "far";
+            g.detector_tilt_deg = Mathf.Sin(Time.time) * 10f;
+
+            ApplyImmediate(g);
+        }
+
         public void ApplyImmediate(GeometryState s)
         {
-            if (refs == null) { Debug.LogError("RigController: refs not set."); return; }
+            if (refs == null)
+            {
+                Debug.LogError("RigController: refs not set.");
+                return;
+            }
+
+            if (s == null)
+            {
+                Debug.LogError("RigController: state is null.");
+                return;
+            }
+
             Current = s;
 
-            // Sample alpha (about +X)
+            // -------- Sample --------
             float alphaVisual = s.alpha_i_deg * alphaVisualScale;
-            refs.sampleAlphaPivot.localRotation = Quaternion.Euler(alphaVisual, 0f, 0f);
 
-            // Sample phi (about +Y) in tilted frame
-            refs.samplePhiPivot.localRotation = Quaternion.Euler(0f, s.phi_deg, 0f);
+            if (refs.sampleAlphaPivot != null)
+                refs.sampleAlphaPivot.localRotation = Quaternion.Euler(alphaVisual, 0f, 0f);
 
-            // Detector distance
-            float z = (s.detector_distance_preset == "far") ? detectorZFar : detectorZNear;
-            Vector3 p = refs.detectorDistancePivot.localPosition;
-            refs.detectorDistancePivot.localPosition = new Vector3(p.x, p.y, z);
+            if (refs.samplePhiPivot != null)
+                refs.samplePhiPivot.localRotation = Quaternion.Euler(0f, s.phi_deg, 0f);
 
-            // Detector tilt about +X
-            refs.detectorTiltPivot.localRotation = Quaternion.Euler(s.detector_tilt_deg, 0f, 0f);
+            // -------- Detector distance --------
+            string preset = (s.detector_distance_preset ?? "near").ToLowerInvariant();
+            float z = (preset == "far") ? detectorZFar : detectorZNear;
 
-            // Beam center + beamstop placement (in detector plane local coords)
-            if (refs.detectorMapper != null && refs.detectorPlane != null)
+            if (refs.detectorDistancePivot != null)
+            {
+                Vector3 p = refs.detectorDistancePivot.localPosition;
+                refs.detectorDistancePivot.localPosition = new Vector3(p.x, p.y, z);
+            }
+
+            // -------- Detector tilt --------
+            if (refs.detectorTiltPivot != null)
+                refs.detectorTiltPivot.localRotation = Quaternion.Euler(s.detector_tilt_deg, 0f, 0f);
+
+            // -------- Beam center + beamstop placement --------
+            if (refs.detectorMapper != null)
             {
                 Vector3 centerLocal = refs.detectorMapper.PixelToLocal(s.beam_center_px.x, s.beam_center_px.y);
                 Vector3 offsetLocal = refs.detectorMapper.OffsetPxToLocal(s.beamstop_offset_px.dx, s.beamstop_offset_px.dy);
@@ -63,19 +98,32 @@ namespace Twinspec.Rig
                 if (refs.beamstopMesh != null)
                 {
                     float rUnits = refs.detectorMapper.RadiusPxToLocalScale(s.beamstop_radius_px);
-                    // BeamstopMesh should be a unit disc scaled in X/Y
                     refs.beamstopMesh.localScale = new Vector3(rUnits, rUnits, refs.beamstopMesh.localScale.z);
                 }
             }
 
-            // Material styling
+            // -------- Material styling --------
+            // Standardize: styling script should already know its targetRenderer (or can use refs.sampleRenderer).
             if (materialStyling != null)
-                materialStyling.Apply(refs.sampleRenderer, s.material_class);
+            {
+                // Option A (recommended): MaterialClassStyling.Apply(string materialClass)
+                // If your MaterialClassStyling currently uses this signature, keep this call:
+                materialStyling.Apply(s.material_class);
 
-            // Optional gizmos
+                // Option B: If you kept Apply(Renderer, string), comment the line above and use this instead:
+                // materialStyling.Apply(refs.sampleRenderer, s.material_class);
+            }
+
+            // -------- Optional gizmos --------
             qAxisGizmo?.Refresh();
-            alphaArc?.SetDegrees(alphaVisual, labelText: $"{s.alpha_i_deg:0.00}°");
-            phiArc?.SetDegrees(s.phi_deg, labelText: $"{s.phi_deg:0.#}°");
+
+            // Don’t use named args (labelText:) unless ArcRenderer defines that parameter name.
+            // Keep it simple: call with one arg OR two positional args depending on your ArcRenderer.
+            if (alphaArc != null)
+                alphaArc.SetDegrees(alphaVisual);
+
+            if (phiArc != null)
+                phiArc.SetDegrees(s.phi_deg);
         }
     }
 }
