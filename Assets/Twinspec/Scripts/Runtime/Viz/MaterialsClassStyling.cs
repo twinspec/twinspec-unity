@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class MaterialsClassStyling
+public class MaterialsClassStyling : MonoBehavior
 {
     
 }
