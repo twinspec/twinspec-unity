@@ -192,7 +192,7 @@ twinspec-unity/
 
 ---
 
-## Rig hierarchy (conceptual)
+## Rig hierarchy
 ```
 GIWAXS_Rig
 ├── BeamRoot
@@ -254,4 +254,5 @@ TwinSpec Unity is a **state-driven, kinematically correct visual digital twin** 
 It prioritizes **interpretive clarity**, architectural correctness, and separation of concerns, while exposing a public Unity codebase that already implements real-time kinematic coupling at the script level.
 
 The remaining work is **mechanical validation**, not conceptual invention.
+
 
